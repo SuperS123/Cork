@@ -1,0 +1,45 @@
+name: Build Cork
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Homebrew
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> $HOME/.zprofile
+          eval "$(/opt/homebrew/bin/brew shellenv)"
+
+      - name: Install Dependencies
+        run: |
+          brew install mise
+          mise install tuist@4.25.0
+          mise use tuist@4.25.0
+
+      - name: Generate Xcode Project
+        run: |
+          tuist install
+          tuist generate --no-binary-cache
+
+      - name: Build Cork
+        run: |
+          xcodebuild -scheme Cork -configuration Release -derivedDataPath build
+
+      - name: Archive Application
+        run: |
+          mkdir -p output
+          cp -R build/Build/Products/Release/Cork.app output/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Cork
+          path: output/Cork.app
